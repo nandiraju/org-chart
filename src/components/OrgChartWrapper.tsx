@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { OrgChart } from 'd3-org-chart';
 import type { Member } from '../types';
 
@@ -9,9 +9,27 @@ interface Props {
   onDelete: (id: string) => void;
 }
 
-export const OrgChartWrapper: React.FC<Props> = ({ data, onNodeClick, onEdit, onDelete }) => {
+export interface OrgChartRef {
+  expandAll: () => void;
+  collapseAll: () => void;
+  fit: () => void;
+}
+
+export const OrgChartWrapper = forwardRef<OrgChartRef, Props>(({ data, onNodeClick, onEdit, onDelete }, ref) => {
   const d3Container = useRef<HTMLDivElement>(null);
   const chartRef = useRef<OrgChart | null>(null);
+
+  useImperativeHandle(ref, () => ({
+    expandAll: () => {
+      if (chartRef.current) chartRef.current.expandAll().render();
+    },
+    collapseAll: () => {
+      if (chartRef.current) chartRef.current.collapseAll().render();
+    },
+    fit: () => {
+      if (chartRef.current) chartRef.current.fit().render();
+    }
+  }));
 
   useEffect(() => {
     if (data && d3Container.current) {
@@ -98,4 +116,4 @@ export const OrgChartWrapper: React.FC<Props> = ({ data, onNodeClick, onEdit, on
   return (
     <div className="org-chart-container" ref={d3Container} style={{ height: '100%', width: '100%', backgroundColor: '#0f172a', borderRadius: '0', overflow: 'hidden' }} />
   );
-};
+});
