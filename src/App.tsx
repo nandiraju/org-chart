@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, UserPlus, Users, LayoutDashboard, Settings, Edit2, X, AlertTriangle, Download, Upload, FolderOpen, Save, Check, ChevronDown, ChevronUp, Maximize } from 'lucide-react';
 import { OrgChartWrapper, type OrgChartRef } from './components/OrgChartWrapper';
+import { Tooltip } from './components/Tooltip';
 import type { Member } from './types';
 
 const initialData: Member[] = [
@@ -254,89 +255,83 @@ function App() {
         </div>
 
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', backgroundColor: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', borderRadius: '8px', cursor: 'pointer' }}>
-            <LayoutDashboard size={18} />
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-               <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', opacity: 0.7 }}>Active Chart</span>
-               <span style={{ fontWeight: 600 }}>{activeChart.name}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem', color: 'white', borderRadius: '12px', border: '1px solid #3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', marginBottom: '1rem' }}>
+            <FolderOpen size={20} style={{ color: '#3b82f6' }} />
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+              <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', opacity: 0.6, letterSpacing: '0.05em' }}>Select Active Chart</span>
+              <select 
+                value={currentChartId} 
+                onChange={(e) => setCurrentChartId(e.target.value)}
+                style={{ background: 'none', border: 'none', color: 'white', width: '100%', cursor: 'pointer', outline: 'none', fontSize: '1rem', fontWeight: 600, marginTop: '2px' }}
+              >
+                {Object.values(charts).map(c => (
+                  <option key={c.id} value={c.id} style={{ background: '#1e293b' }}>{c.name}</option>
+                ))}
+              </select>
             </div>
           </div>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', color: 'var(--text-secondary)', borderRadius: '8px', cursor: 'pointer', position: 'relative' }}>
-            <FolderOpen size={18} />
-            <select 
-              value={currentChartId} 
-              onChange={(e) => setCurrentChartId(e.target.value)}
-              style={{ background: 'none', border: 'none', color: 'inherit', width: '100%', cursor: 'pointer', outline: 'none', fontSize: '0.9rem' }}
-            >
-              {Object.values(charts).map(c => (
-                <option key={c.id} value={c.id} style={{ background: '#1e293b' }}>{c.name}</option>
-              ))}
-            </select>
-          </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', color: 'var(--text-secondary)', borderRadius: '8px', cursor: 'pointer' }} onClick={resetChart}>
-            <Plus size={18} />
-            <span>New Chart</span>
-          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+            <div>
+              <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', opacity: 0.6, letterSpacing: '0.05em', marginBottom: '0.5rem', display: 'block' }}>Data Management</span>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <Tooltip content="New Chart" description="Create a fresh organizational chart from scratch.">
+                  <button onClick={resetChart} className="icon-btn-secondary">
+                    <Plus size={18} />
+                  </button>
+                </Tooltip>
+                
+                <Tooltip content="Import CSV" description="Upload a previously exported CSV to restore a team structure.">
+                  <label className="icon-btn-secondary" style={{ cursor: 'pointer' }}>
+                    <Upload size={18} />
+                    <input type="file" accept=".csv" onChange={importCSV} style={{ display: 'none' }} />
+                  </label>
+                </Tooltip>
 
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', color: 'var(--text-secondary)', borderRadius: '8px', cursor: 'pointer' }}>
-            <Upload size={18} />
-            <span>Import CSV</span>
-            <input type="file" accept=".csv" onChange={importCSV} style={{ display: 'none' }} />
-          </label>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', color: 'var(--text-secondary)', borderRadius: '8px', cursor: 'pointer' }} onClick={exportToCSV}>
-            <Download size={18} />
-            <span>Export CSV</span>
-          </div>
-
-          <div style={{ margin: '1rem 0', height: '1px', backgroundColor: 'var(--border)' }}></div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', opacity: 0.7, paddingLeft: '0.75rem' }}>Navigation</span>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button 
-                onClick={() => chartRef.current?.expandAll()}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', padding: '0.6rem', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '6px', color: 'white', cursor: 'pointer', fontSize: '0.8rem' }}
-                title="Expand All"
-              >
-                <ChevronDown size={14} /> Expand
-              </button>
-              <button 
-                onClick={() => chartRef.current?.collapseAll()}
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', padding: '0.6rem', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '6px', color: 'white', cursor: 'pointer', fontSize: '0.8rem' }}
-                title="Collapse All"
-              >
-                <ChevronUp size={14} /> Collapse
-              </button>
+                <Tooltip content="Export CSV" description="Download current chart as a CSV for backup or sharing.">
+                  <button onClick={exportToCSV} className="icon-btn-secondary">
+                    <Download size={18} />
+                  </button>
+                </Tooltip>
+              </div>
             </div>
-            <button 
-              onClick={() => chartRef.current?.fit()}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', padding: '0.6rem', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '6px', color: 'white', cursor: 'pointer', fontSize: '0.8rem' }}
-              title="Fit to Screen"
-            >
-              <Maximize size={14} /> Fit to Screen
-            </button>
-          </div>
 
-          <div 
-            style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '0.75rem', 
-              padding: '0.75rem', 
-              backgroundColor: showSavedFeedback ? '#059669' : '#2563eb', 
-              color: 'white', 
-              borderRadius: '8px', 
-              cursor: 'pointer', 
-              marginTop: '1rem',
-              transition: 'all 0.3s ease'
-            }} 
-            onClick={manualSave}
-          >
-            {showSavedFeedback ? <Check size={18} /> : <Save size={18} />}
-            <span style={{ fontWeight: 600 }}>{showSavedFeedback ? 'Saved!' : 'Save Chart'}</span>
+            <div>
+              <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', opacity: 0.6, letterSpacing: '0.05em', marginBottom: '0.5rem', display: 'block' }}>Navigation</span>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <Tooltip content="Expand All" description="Reveal all members and levels in the hierarchy.">
+                  <button onClick={() => chartRef.current?.expandAll()} className="icon-btn-secondary">
+                    <ChevronDown size={18} />
+                  </button>
+                </Tooltip>
+
+                <Tooltip content="Collapse All" description="Hide all branches and focus on the top level.">
+                  <button onClick={() => chartRef.current?.collapseAll()} className="icon-btn-secondary">
+                    <ChevronUp size={18} />
+                  </button>
+                </Tooltip>
+
+                <Tooltip content="Fit to Screen" description="Auto-scale and center the chart to fit your window.">
+                  <button onClick={() => chartRef.current?.fit()} className="icon-btn-secondary">
+                    <Maximize size={18} />
+                  </button>
+                </Tooltip>
+
+                <Tooltip content="Save Changes" description="Manually persist all updates to local storage.">
+                  <button 
+                    onClick={manualSave} 
+                    className="icon-btn-secondary"
+                    style={{ 
+                      backgroundColor: showSavedFeedback ? '#059669' : '#1e293b',
+                      borderColor: showSavedFeedback ? '#10b981' : '#334155',
+                      color: showSavedFeedback ? 'white' : 'inherit'
+                    }}
+                  >
+                    {showSavedFeedback ? <Check size={18} /> : <Save size={18} />}
+                  </button>
+                </Tooltip>
+              </div>
+            </div>
           </div>
         </nav>
 

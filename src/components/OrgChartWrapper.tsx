@@ -62,7 +62,7 @@ export const OrgChartWrapper = forwardRef<OrgChartRef, Props>(({ data, onNodeCli
             const id = d.data?.id;
             
             return `
-              <div style="font-family: 'Inter', sans-serif; background-color: #1e293b; border: 1px solid #334155; border-radius: 12px; width: ${
+              <div style="font-family: 'Poppins', sans-serif; background-color: #1e293b; border: 1px solid #334155; border-radius: 12px; width: ${
                 d.width
               }px; height: ${d.height}px; color: ${color}; overflow: visible; display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); position: relative; padding-top: 20px; box-sizing: border-box;">
                 <div style="position: absolute; top: -20px; left: 50%; transform: translateX(-50%); width: 44px; height: 44px; border-radius: 50%; border: 2px solid #3b82f6; background-image: url('${imageUrl}'); background-size: cover; background-position: center; background-color: #1e293b; z-index: 10;"></div>
