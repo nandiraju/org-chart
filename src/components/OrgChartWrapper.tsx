@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+import { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { OrgChart } from 'd3-org-chart';
 import type { Member } from '../types';
 
@@ -21,13 +21,13 @@ export const OrgChartWrapper = forwardRef<OrgChartRef, Props>(({ data, onNodeCli
 
   useImperativeHandle(ref, () => ({
     expandAll: () => {
-      if (chartRef.current) chartRef.current.expandAll().render();
+      if (chartRef.current) (chartRef.current as any).expandAll().render();
     },
     collapseAll: () => {
-      if (chartRef.current) chartRef.current.collapseAll().render();
+      if (chartRef.current) (chartRef.current as any).collapseAll().render();
     },
     fit: () => {
-      if (chartRef.current) chartRef.current.fit().render();
+      if (chartRef.current) (chartRef.current as any).fit().render();
     }
   }));
 
