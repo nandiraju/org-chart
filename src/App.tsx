@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Plus, UserPlus, Edit2, X, AlertTriangle, Download, Upload, FolderOpen, Save, Check, ChevronDown, ChevronUp, Maximize, Trash2 } from 'lucide-react';
 import { OrgChartWrapper, type OrgChartRef } from './components/OrgChartWrapper';
 import { Tooltip } from './components/Tooltip';
@@ -59,7 +59,6 @@ function App() {
   const [imageUrl, setImageUrl] = useState('');
   const [parentId, setParentId] = useState<string>('');
   const [editingMember, setEditingMember] = useState<Member | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showSavedFeedback, setShowSavedFeedback] = useState(false);
   const [modal, setModal] = useState<ModalState>({
     isOpen: false,
@@ -70,23 +69,29 @@ function App() {
   });
 
   // Sync state when chart changes
-  React.useEffect(() => {
-    if (data.length > 0 && !parentId) {
-      setParentId(data[0].id);
+  useEffect(() => {
+    if (data.length > 0) {
+      // Check if current parentId exists in the new data
+      const parentExists = data.some(m => m.id === parentId);
+      if (!parentExists) {
+        setParentId(data[0].id);
+      }
+    } else {
+      setParentId('');
     }
   }, [currentChartId, data]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(charts));
     localStorage.setItem(CURRENT_CHART_KEY, currentChartId);
   }, [charts, currentChartId]);
 
-  const updateActiveChartData = (newData: Member[]) => {
+  const updateActiveChartData = useCallback((newData: Member[]) => {
     setCharts(prev => ({
       ...prev,
       [currentChartId]: { ...prev[currentChartId], data: newData }
     }));
-  };
+  }, [currentChartId]);
 
   const addMember = (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,57 +116,51 @@ function App() {
     if (!editingMember) return;
 
     const updatedData = data.map(m => 
-      m.id === editingMember.id ? { 
-        ...m, 
-        name: editingMember.name, 
-        role: editingMember.role, 
-        imageUrl: editingMember.imageUrl,
-        parentId: editingMember.parentId
-      } : m
+      m.id === editingMember.id ? editingMember : m
     );
     updateActiveChartData(updatedData);
     setEditingMember(null);
   };
 
-  const confirmDelete = () => {
-    if (!deletingId) return;
-    
-    const idsToDelete = new Set([deletingId]);
-    let changed = true;
-    
-    // Recursively find all children to delete
-    while (changed) {
-      changed = false;
-      data.forEach(m => {
-        if (m.parentId && idsToDelete.has(m.parentId) && !idsToDelete.has(m.id)) {
-          idsToDelete.add(m.id);
-          changed = true;
-        }
-      });
-    }
-
-    updateActiveChartData(data.filter(m => !idsToDelete.has(m.id)));
-    
-    if (idsToDelete.has(parentId)) {
-      setParentId(data.find(m => !idsToDelete.has(m.id))?.id || initialData[0].id);
-    }
-    
-    setDeletingId(null);
-  };
-
-  const handleNodeClick = (node: any) => {
+  const handleNodeClick = useCallback((node: any) => {
     setParentId(node.data.id);
-  };
+  }, []);
 
-  const handleEditRequest = (member: Member) => {
+  const handleEditRequest = useCallback((member: Member) => {
     setEditingMember(member);
-    setDeletingId(null);
-  };
+  }, []);
 
-  const handleDeleteRequest = (id: string) => {
-    setDeletingId(id);
-    setEditingMember(null);
-  };
+  const handleDeleteRequest = useCallback((id: string) => {
+    const member = data.find(m => m.id === id);
+    setModal({
+      isOpen: true,
+      type: 'confirm',
+      title: 'Delete Member',
+      description: `Are you sure you want to remove ${member?.name || 'this member'} and all their direct reports?`,
+      onConfirm: () => {
+        const idsToDelete = new Set([id]);
+        let changed = true;
+        
+        // Recursively find all children to delete
+        while (changed) {
+          changed = false;
+          data.forEach(m => {
+            if (m.parentId && idsToDelete.has(m.parentId) && !idsToDelete.has(m.id)) {
+              idsToDelete.add(m.id);
+              changed = true;
+            }
+          });
+        }
+
+        const newData = data.filter(m => !idsToDelete.has(m.id));
+        updateActiveChartData(newData);
+        
+        if (idsToDelete.has(parentId)) {
+          setParentId(newData[0]?.id || '');
+        }
+      }
+    });
+  }, [data, parentId, updateActiveChartData]);
 
   const resetChart = () => {
     setModal({
@@ -298,7 +297,6 @@ function App() {
     setTimeout(() => setShowSavedFeedback(false), 2000);
   };
 
-  const memberToDelete = data.find(m => m.id === deletingId);
 
   return (
     <div className="app-container">
@@ -397,33 +395,7 @@ function App() {
           </div>
         </nav>
 
-        {deletingId ? (
-          <div className="form-container animate-fade-in" style={{ backgroundColor: '#451a1a', padding: '1.5rem', borderRadius: '12px', border: '1px solid #ef4444' }}>
-            <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#fca5a5' }}>
-              <AlertTriangle size={18} />
-              Confirm Delete
-            </h3>
-            <p style={{ fontSize: '0.875rem', color: '#fecaca', marginBottom: '1.5rem' }}>
-              Are you sure you want to delete <strong>{memberToDelete?.name}</strong> and all their direct reports? This action cannot be undone.
-            </p>
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <button 
-                onClick={confirmDelete}
-                className="btn-primary" 
-                style={{ flex: 1, backgroundColor: '#ef4444' }}
-              >
-                Delete
-              </button>
-              <button 
-                onClick={() => setDeletingId(null)}
-                className="btn-primary" 
-                style={{ flex: 1, backgroundColor: '#334155' }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        ) : editingMember ? (
+        {editingMember ? (
           <div className="form-container animate-fade-in" style={{ backgroundColor: '#1e293b', padding: '1.5rem', borderRadius: '12px', border: '1px solid #3b82f6' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -533,6 +505,7 @@ function App() {
                   value={parentId}
                   onChange={(e) => setParentId(e.target.value)}
                 >
+                  <option value="">No Parent (Root)</option>
                   {data.map((member) => (
                     <option key={member.id} value={member.id}>
                       {member.name} ({member.role})
