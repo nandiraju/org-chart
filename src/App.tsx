@@ -1,18 +1,29 @@
 import React, { useState } from 'react';
-import { Plus, UserPlus, Users, Edit2, X, AlertTriangle, Download, Upload, FolderOpen, Save, Check, ChevronDown, ChevronUp, Maximize } from 'lucide-react';
+import { Plus, UserPlus, Users, Edit2, X, AlertTriangle, Download, Upload, FolderOpen, Save, Check, ChevronDown, ChevronUp, Maximize, Trash2 } from 'lucide-react';
 import { OrgChartWrapper, type OrgChartRef } from './components/OrgChartWrapper';
 import { Tooltip } from './components/Tooltip';
 import type { Member } from './types';
+
+const DEFAULT_IMAGE = 'https://media.licdn.com/dms/image/v2/D5603AQEKX1AlF8EWIA/profile-displayphoto-shrink_800_800/B56ZZjxWl5GUAc-/0/1745430604613?e=1779926400&v=beta&t=yPsgYCVIVZGR5FTzAZ2pJNkhmyHSmb9IEcc7H1nM2X8';
 
 const initialData: Member[] = [
   {
     id: '1',
     parentId: '',
-    name: 'Ian Bumbeishvili',
+    name: 'John Doe',
     role: 'Founder & CEO',
-    imageUrl: 'https://avatars.githubusercontent.com/u/16142340?v=4',
+    imageUrl: DEFAULT_IMAGE,
   },
 ];
+
+interface ModalState {
+  isOpen: boolean;
+  type: 'prompt' | 'confirm';
+  title: string;
+  description: string;
+  defaultValue?: string;
+  onConfirm: (value?: string) => void;
+}
 
 interface SavedChart {
   id: string;
@@ -50,6 +61,13 @@ function App() {
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showSavedFeedback, setShowSavedFeedback] = useState(false);
+  const [modal, setModal] = useState<ModalState>({
+    isOpen: false,
+    type: 'confirm',
+    title: '',
+    description: '',
+    onConfirm: () => {},
+  });
 
   // Sync state when chart changes
   React.useEffect(() => {
@@ -79,7 +97,7 @@ function App() {
       parentId: parentId || '',
       name,
       role,
-      imageUrl: imageUrl.trim() || `https://i.pravatar.cc/150?u=${Math.random()}`,
+      imageUrl: imageUrl.trim() || DEFAULT_IMAGE,
     };
 
     updateActiveChartData([...data, newMember]);
@@ -146,15 +164,56 @@ function App() {
   };
 
   const resetChart = () => {
-    const chartName = prompt('Enter a name for your new chart:', 'New Team Chart');
-    if (chartName) {
-      const newId = Math.random().toString(36).substr(2, 9);
-      setCharts(prev => ({
-        ...prev,
-        [newId]: { id: newId, name: chartName, data: initialData }
-      }));
-      setCurrentChartId(newId);
+    setModal({
+      isOpen: true,
+      type: 'prompt',
+      title: 'Create New Chart',
+      description: 'Enter a name for your new organizational chart:',
+      defaultValue: 'New Team Chart',
+      onConfirm: (name) => {
+        if (!name) return;
+        const newId = Date.now().toString();
+        const newCharts = {
+          ...charts,
+          [newId]: {
+            id: newId,
+            name,
+            data: initialData,
+          },
+        };
+        setCharts(newCharts);
+        setCurrentChartId(newId);
+      }
+    });
+  };
+
+  const deleteActiveChart = () => {
+    const chartCount = Object.keys(charts).length;
+    if (chartCount <= 1) {
+      setModal({
+        isOpen: true,
+        type: 'confirm',
+        title: 'Cannot Delete',
+        description: 'You cannot delete the only remaining chart. Please create a new one first.',
+        onConfirm: () => {}
+      });
+      return;
     }
+
+    setModal({
+      isOpen: true,
+      type: 'confirm',
+      title: 'Delete Chart',
+      description: `Are you sure you want to delete the chart "${activeChart.name}"? This action cannot be undone.`,
+      onConfirm: () => {
+        const remainingCharts = { ...charts };
+        delete remainingCharts[currentChartId];
+        
+        const nextId = Object.keys(remainingCharts)[0];
+        setCharts(remainingCharts);
+        setCurrentChartId(nextId);
+      }
+    });
   };
 
   const importCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -164,42 +223,39 @@ function App() {
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        const text = event.target?.result as string;
-        const lines = text.split('\n');
-        const headers = lines[0].split(',');
-        
-        const importedData: Member[] = lines.slice(1).filter(line => line.trim()).map(line => {
-          // Simple CSV parser for quoted fields
-          const parts: string[] = [];
-          let current = '';
-          let inQuotes = false;
-          for (let i = 0; i < line.length; i++) {
-            if (line[i] === '"') inQuotes = !inQuotes;
-            else if (line[i] === ',' && !inQuotes) {
-              parts.push(current.trim());
-              current = '';
-            } else {
-              current += line[i];
-            }
-          }
-          parts.push(current.trim());
-
-          const member: any = {};
-          headers.forEach((header, index) => {
-            member[header.trim()] = parts[index];
-          });
-          return member as Member;
+        const content = event.target?.result as string;
+        const rows = content.split('\n').filter(r => r.trim());
+        const importedData: Member[] = rows.slice(1).map(row => {
+          const columns = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
+          return {
+            id: columns[0]?.replace(/"/g, '') || '',
+            parentId: columns[1]?.replace(/"/g, '') || '',
+            name: columns[2]?.replace(/"/g, '') || '',
+            role: columns[3]?.replace(/"/g, '') || '',
+            imageUrl: columns[4]?.replace(/"/g, '') || DEFAULT_IMAGE,
+          };
         });
 
-        const chartName = prompt('CSV Parsed! Enter a name for this imported chart:', file.name.replace('.csv', ''));
-        if (chartName) {
-          const newId = Math.random().toString(36).substr(2, 9);
-          setCharts(prev => ({
-            ...prev,
-            [newId]: { id: newId, name: chartName, data: importedData }
-          }));
-          setCurrentChartId(newId);
-        }
+        setModal({
+          isOpen: true,
+          type: 'prompt',
+          title: 'Import Chart',
+          description: 'Enter a name for the imported chart:',
+          defaultValue: file.name.replace('.csv', ''),
+          onConfirm: (name) => {
+            if (!name) return;
+            const newId = Date.now().toString();
+            setCharts({
+              ...charts,
+              [newId]: {
+                id: newId,
+                name,
+                data: importedData,
+              },
+            });
+            setCurrentChartId(newId);
+          }
+        });
       } catch (error) {
         alert('Failed to parse CSV. Please ensure it follows the format exported by this tool.');
         console.error(error);
@@ -247,12 +303,6 @@ function App() {
   return (
     <div className="app-container">
       <aside className="sidebar">
-        <div className="logo-section">
-          <div style={{ width: '32px', height: '32px', backgroundColor: '#2563eb', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-             <Users style={{ color: 'white', margin: 'auto' }} size={20} />
-          </div>
-          <h1 style={{ marginLeft: '12px' }}>OrgViz Pro</h1>
-        </div>
 
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem', color: 'white', borderRadius: '12px', border: '1px solid #3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', marginBottom: '1rem' }}>
@@ -293,14 +343,26 @@ function App() {
                     <Download size={18} />
                   </button>
                 </Tooltip>
+
+                <Tooltip content="Delete Chart" description="Permanently remove the currently active chart.">
+                  <button onClick={deleteActiveChart} className="icon-btn-secondary" style={{ color: '#ef4444' }}>
+                    <Trash2 size={18} />
+                  </button>
+                </Tooltip>
               </div>
             </div>
 
             <div>
               <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', opacity: 0.6, letterSpacing: '0.05em', marginBottom: '0.5rem', display: 'block' }}>Navigation</span>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <Tooltip content="Expand All" description="Reveal all members and levels in the hierarchy.">
-                  <button onClick={() => chartRef.current?.expandAll()} className="icon-btn-secondary">
+                <Tooltip content="Expand All" description="Reveal all members and fit the entire chart to screen.">
+                  <button 
+                    onClick={() => {
+                      chartRef.current?.expandAll();
+                      setTimeout(() => chartRef.current?.fit(), 200);
+                    }} 
+                    className="icon-btn-secondary"
+                  >
                     <ChevronDown size={18} />
                   </button>
                 </Tooltip>
@@ -502,8 +564,56 @@ function App() {
           />
         </div>
       </main>
+
+      {/* Modal Component */}
+      {modal.isOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }}>
+          <div className="animate-fade-in" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '16px', padding: '2rem', width: '400px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
+            <h2 style={{ fontSize: '1.5rem', marginBottom: '0.75rem' }}>{modal.title}</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', lineHeight: '1.5' }}>{modal.description}</p>
+            
+            {modal.type === 'prompt' && (
+              <input 
+                id="modal-input"
+                type="text" 
+                className="form-input" 
+                defaultValue={modal.defaultValue}
+                autoFocus
+                style={{ width: '100%', marginBottom: '1.5rem' }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    modal.onConfirm((e.target as HTMLInputElement).value);
+                    setModal({ ...modal, isOpen: false });
+                  }
+                }}
+              />
+            )}
+            
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+              <button 
+                className="icon-btn-secondary" 
+                style={{ width: 'auto', padding: '0 1.5rem', height: '44px' }}
+                onClick={() => setModal({ ...modal, isOpen: false })}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn-primary" 
+                style={{ height: '44px', padding: '0 1.5rem' }}
+                onClick={() => {
+                  const val = (document.getElementById('modal-input') as HTMLInputElement)?.value;
+                  modal.onConfirm(val);
+                  setModal({ ...modal, isOpen: false });
+                }}
+              >
+                {modal.type === 'prompt' ? 'Confirm' : modal.title === 'Delete Chart' || modal.title === 'Delete Member' ? 'Delete' : 'OK'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-}
+};
 
 export default App;

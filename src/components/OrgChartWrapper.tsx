@@ -55,10 +55,12 @@ export const OrgChartWrapper = forwardRef<OrgChartRef, Props>(({ data, onNodeCli
             onNodeClick(d);
           })
           .nodeContent((d: any) => {
+            // ... existing node content logic ...
             const color = '#FFFFFF';
             const name = d.data?.name || 'Unknown';
             const role = d.data?.role || 'No Role';
-            const imageUrl = d.data?.imageUrl || `https://i.pravatar.cc/100?u=${d.data?.id}`;
+            const DEFAULT_IMAGE = 'https://media.licdn.com/dms/image/v2/D5603AQEKX1AlF8EWIA/profile-displayphoto-shrink_800_800/B56ZZjxWl5GUAc-/0/1745430604613?e=1779926400&v=beta&t=yPsgYCVIVZGR5FTzAZ2pJNkhmyHSmb9IEcc7H1nM2X8';
+            const imageUrl = d.data?.imageUrl || DEFAULT_IMAGE;
             const id = d.data?.id;
             
             return `
@@ -82,6 +84,7 @@ export const OrgChartWrapper = forwardRef<OrgChartRef, Props>(({ data, onNodeCli
               </div>
             `;
           })
+          .expandAll()
           .render();
 
         (window as any).editMember = (id: string) => {
