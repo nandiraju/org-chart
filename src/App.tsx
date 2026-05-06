@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Users, Edit2, X, AlertTriangle, Download, Upload, FolderOpen, Save, Check, ChevronDown, ChevronUp, Maximize } from 'lucide-react';
+import { Plus, UserPlus, Users, Edit2, X, AlertTriangle, Download, Upload, FolderOpen, Save, Check, ChevronDown, ChevronUp, Maximize } from 'lucide-react';
 import { OrgChartWrapper, type OrgChartRef } from './components/OrgChartWrapper';
 import { Tooltip } from './components/Tooltip';
 import type { Member } from './types';
